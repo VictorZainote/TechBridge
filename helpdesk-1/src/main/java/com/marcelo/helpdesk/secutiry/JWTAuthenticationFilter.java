@@ -34,12 +34,26 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			throws AuthenticationException {
 		try {
 			CredenciaisDTO creds = new ObjectMapper().readValue(request.getInputStream(), CredenciaisDTO.class);
-			UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-					creds.getEmail(), creds.getSenha(), new ArrayList<>());
-			Authentication authentication = authenticationManager.authenticate(authenticationToken);
-			return authentication;
+
+			UsernamePasswordAuthenticationToken authenticationToken =
+					new UsernamePasswordAuthenticationToken(creds.getEmail(), creds.getSenha(), new ArrayList<>());
+
+			return authenticationManager.authenticate(authenticationToken);
+
+		} catch (IOException e) {
+			try {
+				response.setStatus(400);
+				response.setContentType("application/json");
+				response.getWriter().append("{ \"error\": \"JSON inválido\" }");
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+			return null;
+		} catch (AuthenticationException e) {
+			throw e; // deixa o Spring tratar e cair no método `unsuccessfulAuthentication`
 		} catch (Exception e) {
-			throw new RuntimeException(e);
+			e.printStackTrace(); // loga a exception real
+			throw new RuntimeException("Erro interno ao tentar autenticar", e);
 		}
 	}
 
