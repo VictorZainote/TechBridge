@@ -28,7 +28,11 @@ import com.marcelo.helpdesk.secutiry.JWTUtil;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecutiryConfig extends WebSecurityConfigurerAdapter {
 
-	private static final String[] PUBLIC_MATCHERS = { "/h2-console/**","/login" };
+	private static final String[] PUBLIC_MATCHERS = {
+		"/h2-console/**",
+		"/login",
+		"/**" 
+	};
 	
 	@Autowired
 	private Environment env;
@@ -41,25 +45,25 @@ public class SecutiryConfig extends WebSecurityConfigurerAdapter {
 	
 
 	
-	@Override
+		@Override
 	protected void configure(HttpSecurity http) throws Exception {
-		if(Arrays.asList(env.getActiveProfiles()).contains("test")) {
-            http.headers(
-            		headers -> headers.frameOptions().disable());
+		if (Arrays.asList(env.getActiveProfiles()).contains("test")) {
+			http.headers(headers -> headers.frameOptions().disable());
 		}
 
 		http.cors().configurationSource(corsConfigurationSource()).and()
-        .csrf(csrf -> csrf.disable());
+			.csrf().disable();
 
 		http.addFilter(new JWTAuthenticationFilter(authenticationManager(), jwtUtil));
-		
-		http.addFilter(new JWTAuthorizationFilter(authenticationManager(), jwtUtil,userDetailsService));
-		
-		http.authorizeRequests(
-				requests -> requests.antMatchers(PUBLIC_MATCHERS).permitAll().anyRequest().authenticated());
-		
-		http.sessionManagement( 
-				management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+		http.addFilter(new JWTAuthorizationFilter(authenticationManager(), jwtUtil, userDetailsService));
+
+		http.authorizeRequests(requests -> requests
+			.antMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // Libera pre-flight
+			.antMatchers(PUBLIC_MATCHERS).permitAll()
+			.anyRequest().authenticated()
+		);
+
+		http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 	}
 	
 	
@@ -68,17 +72,22 @@ public class SecutiryConfig extends WebSecurityConfigurerAdapter {
 		auth.userDetailsService(userDetailsService).passwordEncoder(bCryptPasswordEncoder());
 	}
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("")); 
-        configuration.setAllowedMethods(Arrays.asList("POST", "GET", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
-        configuration.setAllowCredentials(true); 
-        final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); 
-        return source;
-    }
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+
+		configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+
+		 configuration.setAllowedOrigins(Arrays.asList("https://helpdesk-techbridge.vercel.app", "*"));
+
+		configuration.setAllowedMethods(Arrays.asList("POST", "GET", "PUT", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+		configuration.setAllowCredentials(true);
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
 	
 	 
 	@Bean
